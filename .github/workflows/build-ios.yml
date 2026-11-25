@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios-simulator:
-    runs-on: macos-14   # macOS + Xcode 15，自带 iOS 17 Simulator
+    runs-on: macos-14
 
     steps:
       - name: Checkout
@@ -25,39 +25,27 @@ jobs:
       - name: Sync web assets to iOS
         run: npx cap sync ios
 
-      - name: Build iOS Simulator app (no signing needed)
+      - name: Build iOS Simulator app
         working-directory: ios/App
-        run: |
-          xcodebuild \
-            -project App.xcodeproj \
-            -scheme App \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+        run: >-
+          xcodebuild
+          -project App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+          build
 
-      - name: List simulator destinations
-        run: xcrun simctl list devices available
-
-      - name: Boot iPhone simulator
+      - name: Find and boot iPhone simulator
         run: |
-          # 找一台可用的 iPhone 15/16 模拟器
-          UDID=$(xcrun simctl list devices available -j | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for runtime, devs in d['devices'].items():
-    if 'iOS' not in runtime: continue
-    for dev in devs:
-        if dev['name'].startswith('iPhone') and dev['isAvailable']:
-            print(dev['udid']); break
-    else: continue
-    break
-")
+          UDID=$(xcrun simctl list devices available | grep -m1 'iPhone' | grep -oE '\([0-9A-Fa-f-]{36}\)' | tr -d '()')
           echo "SIM_UDID=$UDID" >> $GITHUB_ENV
+          echo "Booting simulator $UDID"
           xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
           open -a Simulator
-          sleep 10
+          sleep 5
 
       - name: Install app on simulator
         run: |
@@ -67,13 +55,12 @@ for runtime, devs in d['devices'].items():
 
       - name: Launch app and take screenshot
         run: |
-          BUNDLE=com.maptool.app
-          xcrun simctl launch "$SIM_UDID" "$BUNDLE" || true
+          xcrun simctl launch "$SIM_UDID" com.maptool.app || true
           sleep 8
           mkdir -p screenshots
           xcrun simctl io "$SIM_UDID" screenshot screenshots/ios-app.png
 
-      - name: Upload screenshot + build log
+      - name: Upload screenshot and app
         if: always()
         uses: actions/upload-artifact@v4
         with:
