@@ -1,0 +1,11 @@
+{
+  "appId": "com.maptool.app",
+  "appName": "沿途最顺路",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

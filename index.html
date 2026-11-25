@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="沿途最顺路地图工具：A→B 导航、途经点规划、关键词沿途搜索">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="沿途最顺路">
+  <title>沿途最顺路 · 地图工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>沿途最顺路</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-theme" class="icon-btn theme-toggle" title="切换暗黑模式" aria-label="切换暗黑模式">🌙</button>
+      <button id="btn-settings" class="icon-btn" title="配置 KEY" aria-label="配置 KEY">⚙</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="panel" aria-label="控制面板">
+      <div class="panel-scroll">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="navigate" role="tab">路线规划</button>
+          <button class="tab" data-tab="along" role="tab">沿途搜索</button>
+        </div>
+
+        <div class="mode-select" role="radiogroup" aria-label="出行方式">
+          <button type="button" class="mode-btn active" data-mode="driving" role="radio" aria-checked="true">🚗 驾车</button>
+          <button type="button" class="mode-btn" data-mode="cycling" role="radio" aria-checked="false">🚲 骑行</button>
+          <button type="button" class="mode-btn" data-mode="walking" role="radio" aria-checked="false">🚶 步行</button>
+          <button type="button" class="mode-btn" data-mode="transit" role="radio" aria-checked="false">🚌 公交</button>
+        </div>
+        <div id="mode-hint" class="mode-hint hidden"></div>
+
+        <!-- KEY 提示 -->
+        <div id="key-warning" class="alert hidden">
+          未配置高德 KEY。请在右上角 ⚙ 中填写「Web 服务 KEY」和「JS API KEY」（可填同一个兼顾两者）。
+        </div>
+
+        <!-- 路线规划 -->
+        <div id="tab-navigate" class="tab-content">
+          <div class="field">
+            <label for="input-a">起点 A <button id="btn-locate" class="locate-btn" title="定位到当前位置">⌖ 当前位置</button></label>
+            <div class="autocomplete-wrap">
+              <div class="input-row">
+                <input id="input-a" type="text" placeholder="输入地址，如：北京市朝阳区三里屯" autocomplete="off">
+                <button class="mini-btn" data-pick="a" title="在地图上选点">◎</button>
+              </div>
+              <div class="autocomplete-list hidden" id="suggest-a"></div>
+            </div>
+          </div>
+          <div id="waypoint-list" class="waypoint-list"></div>
+          <div class="field">
+            <button id="btn-add-waypoint" class="ghost-btn">+ 添加途经点 C</button>
+          </div>
+          <div class="field">
+            <label for="input-b">终点 B</label>
+            <div class="autocomplete-wrap">
+              <div class="input-row">
+                <input id="input-b" type="text" placeholder="输入地址，如：北京南站" autocomplete="off">
+                <button class="mini-btn" data-pick="b" title="在地图上选点">◎</button>
+              </div>
+              <div class="autocomplete-list hidden" id="suggest-b"></div>
+            </div>
+          </div>
+          <button id="btn-route" class="primary-btn">规划路线</button>
+        </div>
+
+        <!-- 沿途搜索 -->
+        <div id="tab-along" class="tab-content hidden">
+          <div class="field">
+            <label for="input-keyword">搜索关键词</label>
+            <input id="input-keyword" type="text" placeholder="如：麦当劳、加油站、充电桩" autocomplete="off">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="input-radius">搜索半径</label>
+              <select id="input-radius">
+                <option value="1000">1 km</option>
+                <option value="1500" selected>1.5 km</option>
+                <option value="3000">3 km</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="input-interval">采样间隔</label>
+              <select id="input-interval">
+                <option value="1000">1 km</option>
+                <option value="2000" selected>2 km</option>
+                <option value="3000">3 km</option>
+              </select>
+            </div>
+          </div>
+          <button id="btn-along" class="primary-btn">搜索沿途最顺路</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 路线方案 -->
+        <section id="route-section" class="result-section hidden" aria-label="路线方案">
+          <h3>路线方案 <span class="badge" id="route-count">0</span></h3>
+          <div id="route-list" class="route-list"></div>
+        </section>
+
+        <!-- 途经点候选 -->
+        <section id="poi-section" class="result-section hidden" aria-label="沿途候选">
+          <h3>沿途候选 <span class="badge" id="poi-count">0</span></h3>
+          <div id="poi-status" class="status-line"></div>
+          <div id="poi-filters" class="poi-filters hidden"></div>
+          <div id="poi-list" class="poi-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="map-wrap" aria-label="地图">
+      <div id="map-container"></div>
+      <div id="map-placeholder" class="map-placeholder">
+        <div class="placeholder-icon">🗺️</div>
+        <p>配置 KEY 后显示地图</p>
+        <small>支持 A→B 导航、途经点规划、沿途关键词搜索</small>
+      </div>
+      <div id="toast" class="toast hidden" role="status"></div>
+    </section>
+  </main>
+
+  <!-- 设置弹窗 -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="settings-title">高德 KEY 配置</h2>
+        <button class="icon-btn" data-close-modal aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint">KEY 只保存在本浏览器 localStorage，不上传任何服务器。</p>
+        <div class="field">
+          <label for="key-web">Web 服务 KEY <small>（地址解析 / 路线规划 / POI 搜索）</small></label>
+          <input id="key-web" type="password" placeholder="高德开放平台 → 应用管理 → Web服务 KEY" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="key-js">JS API KEY <small>（地图显示与 JS 插件）</small></label>
+          <input id="key-js" type="password" placeholder="高德开放平台 → 应用管理 → Web端(JS API) KEY" autocomplete="off">
+        </div>
+        <p class="hint">若只有一个 KEY 且已同时开通 Web 服务与 JS API，可两栏填同一个。JS KEY 需配置域名白名单（本地 localhost 可访问）。</p>
+        <div class="field">
+          <label>界面主题</label>
+          <div class="theme-row">
+            <button id="settings-theme-toggle" class="ghost-btn" type="button">切换暗色 / 亮色</button>
+            <span id="settings-theme-label" class="theme-label">亮色</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-settings-clear" class="danger-btn">清除</button>
+        <button id="btn-settings-save" class="primary-btn">保存并加载地图</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

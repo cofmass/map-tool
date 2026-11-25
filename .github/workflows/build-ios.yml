@@ -1,0 +1,83 @@
+name: Build iOS Simulator App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build-ios-simulator:
+    runs-on: macos-14   # macOS + Xcode 15，自带 iOS 17 Simulator
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync web assets to iOS
+        run: npx cap sync ios
+
+      - name: Build iOS Simulator app (no signing needed)
+        working-directory: ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: List simulator destinations
+        run: xcrun simctl list devices available
+
+      - name: Boot iPhone simulator
+        run: |
+          # 找一台可用的 iPhone 15/16 模拟器
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for runtime, devs in d['devices'].items():
+    if 'iOS' not in runtime: continue
+    for dev in devs:
+        if dev['name'].startswith('iPhone') and dev['isAvailable']:
+            print(dev['udid']); break
+    else: continue
+    break
+")
+          echo "SIM_UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID" || true
+          open -a Simulator
+          sleep 10
+
+      - name: Install app on simulator
+        run: |
+          APP_PATH=$(find ios/App/build/Build/Products -name "App.app" -type d | head -1)
+          echo "Installing $APP_PATH"
+          xcrun simctl install "$SIM_UDID" "$APP_PATH"
+
+      - name: Launch app and take screenshot
+        run: |
+          BUNDLE=com.maptool.app
+          xcrun simctl launch "$SIM_UDID" "$BUNDLE" || true
+          sleep 8
+          mkdir -p screenshots
+          xcrun simctl io "$SIM_UDID" screenshot screenshots/ios-app.png
+
+      - name: Upload screenshot + build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-result
+          path: |
+            screenshots/*.png
+            ios/App/build/Build/Products/Debug-iphonesimulator/App.app

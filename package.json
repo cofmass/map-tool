@@ -1,0 +1,22 @@
+{
+  "name": "map-tool",
+  "version": "1.0.0",
+  "description": "按 `docs/设计文档/map-tool/地图网页工具设计方案.md` 实现的纯前端单页应用。",
+  "main": "app.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2"
+  }
+}

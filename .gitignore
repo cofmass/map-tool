@@ -1,0 +1,21 @@
+# iOS 构建产物
+ios/App/build/
+ios/App/Pods/
+ios/App/DerivedData/
+*.xcuserdatad/
+*.xcuserstate
+
+# Node
+node_modules/
+
+# Android 构建产物
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+android/.idea/
+.gradle/
+
+# 通用
+.DS_Store
+*.log
